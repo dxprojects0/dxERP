@@ -360,13 +360,20 @@ export const createInitialUserProfile = async (
 ) => {
   const existing = await getUserProfile(uid);
   if (existing?.onboardingCompleted) return existing;
+  const emailLower = payload.email ? payload.email.toLowerCase() : null;
+  if (emailLower) {
+    const dupSnap = await getDocs(query(collectionGroup(db, 'profile'), where('email', '==', emailLower), limit(1)));
+    if (!dupSnap.empty && dupSnap.docs[0].ref.path.indexOf(uid) === -1) {
+      throw new Error('An account already exists with this email. Please sign in instead.');
+    }
+  }
 
   const normalizedExisting = normalizeProfilePayload(uid, existing || null);
   const ownerName = payload.ownerName || normalizedExisting?.ownerName || '';
   const shopName = payload.shopName || normalizedExisting?.shopName || '';
   const selectedProfessionId = payload.selectedProfessionId || normalizedExisting?.selectedProfessionId || '';
   const phoneNumber = payload.phoneNumber || normalizedExisting?.phoneNumber || '';
-  const email = payload.email ? payload.email.toLowerCase() : null;
+  const email = emailLower;
   const role = toRole(payload.email || normalizedExisting?.email, payload.role || normalizedExisting?.role);
   const safeSelectedProfessionId = role === 'admin'
     ? 'admin'

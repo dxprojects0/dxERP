@@ -71,10 +71,10 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
 ];
 
 export const PRESET_TOOLS: Record<string, ToolFeature[]> = {
-  kirana: ['billing', 'inventory', 'ledger', 'ordering', 'reports'],
-  pharmacy: ['billing', 'inventory', 'expiry', 'ordering', 'reports'],
-  clinic: ['appointments', 'ehr', 'billing', 'reports'],
-  cafe: ['billing', 'inventory', 'kitchen', 'staff', 'reports'],
-  electronics: ['repairTickets', 'inventory', 'warranty', 'reports'],
+  kirana: ['billing', 'inventory', 'ledger', 'ordering', 'reports', 'expenses'],
+  pharmacy: ['billing', 'inventory', 'expiry', 'ordering', 'reports', 'expenses'],
+  clinic: ['appointments', 'ehr', 'billing', 'reports', 'expenses'],
+  cafe: ['billing', 'inventory', 'kitchen', 'staff', 'reports', 'expenses'],
+  electronics: ['repairTickets', 'inventory', 'warranty', 'reports', 'expenses'],
   service: ['jobBooking', 'billing', 'expenses', 'reports'],
 };

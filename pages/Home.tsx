@@ -1,217 +1,161 @@
-import React, { useEffect, useMemo, useState, useRef } from 'react';
-import { createPortal } from 'react-dom';
+import React, { useEffect, useState } from 'react';
+import { Sparkles } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowRight, Megaphone, Sparkles } from 'lucide-react';
 import { useSelector } from 'react-redux';
 import { RootState } from '../store/store';
-import { TOOL_DEFINITIONS } from '../utils/catalog';
 import { ROUTES } from '../utils/routes';
-import Modal from '../components/Modal';
 import { getPublicTheme, onPublicThemeChange } from '../utils/publicTheme';
 
-const heroKeywords = [
-  'Simple ERP for Indian small businesses',
-  'Run your entire business from one app',
-  'Everything your shop needs, in one place',
+const FEATURES = [
+  'billing','inventory','ledger','ordering','reports','expiry',
+  'appointments','ehr','kitchen','staff','repairTickets',
+  'warranty','jobBooking','expenses'
 ];
 
 const Home: React.FC = () => {
   const navigate = useNavigate();
-  const [openToolId, setOpenToolId] = useState<string | null>(null);
-  const [showIntro, setShowIntro] = useState(true);
-  const [alphaIndex, setAlphaIndex] = useState(0);
-  const [brandCount, setBrandCount] = useState(0);
-  const [casinoText, setCasinoText] = useState('DHANDAX');
+
+  const { isAuthenticated, onboardingCompleted, isAdmin } =
+    useSelector((state: RootState) => state.config);
+
   const [publicThemeMode, setPublicThemeMode] = useState<'light' | 'dark'>(() => getPublicTheme());
-  const { isAuthenticated, onboardingCompleted, isAdmin } = useSelector((state: RootState) => state.config);
 
-  const waveRefOne = useRef<HTMLDivElement | null>(null);
-  const waveRefTwo = useRef<HTMLDivElement | null>(null);
-  const floatBlobRef = useRef<HTMLDivElement | null>(null);
+  // smoother “data-like” values
+  const [bars, setBars] = useState([35, 55, 42, 68, 50, 62, 45]);
 
-  const introBrand = 'DhandaX';
-  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-  const randomAlpha = () => alphabet[Math.floor(Math.random() * alphabet.length)];
-
-  useEffect(() => {
-    const onScroll = () => {
-      const y = window.scrollY || window.pageYOffset;
-      if (waveRefOne.current) waveRefOne.current.style.transform = `translate3d(0,${y * 0.08}px,0)`;
-      if (waveRefTwo.current) waveRefTwo.current.style.transform = `translate3d(0,${y * 0.14}px,0)`;
-      if (floatBlobRef.current) floatBlobRef.current.style.transform = `translate3d(0,${y * 0.1}px,0)`;
-    };
-    window.addEventListener('scroll', onScroll, { passive: true });
-    return () => window.removeEventListener('scroll', onScroll);
-  }, []);
-
-  useEffect(() => {
-    let letterIndex = 0;
-    let brandIndex = 0;
-    setCasinoText('DHANDAX');
-
-    const alphaTimer = window.setInterval(() => {
-      letterIndex = Math.min(alphabet.length - 1, letterIndex + 1);
-      setAlphaIndex(letterIndex);
-      if (letterIndex >= alphabet.length - 1) window.clearInterval(alphaTimer);
-    }, 45);
-
-    const brandTimer = window.setInterval(() => {
-      brandIndex = Math.min(introBrand.length, brandIndex + 1);
-      setBrandCount(brandIndex);
-      const next = introBrand
-        .split('')
-        .map((char, index) => (index < brandIndex ? char : randomAlpha()))
-        .join('');
-      setCasinoText(next);
-      if (brandIndex >= introBrand.length) window.clearInterval(brandTimer);
-    }, 95);
-
-    const hideTimer = window.setTimeout(() => setShowIntro(false), 2400);
-
-    return () => {
-      window.clearInterval(alphaTimer);
-      window.clearInterval(brandTimer);
-      window.clearTimeout(hideTimer);
-    };
-  }, []);
-
-  useEffect(() => {
-    const previousOverflow = document.body.style.overflow;
-    if (showIntro) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = previousOverflow || '';
-    }
-    return () => {
-      document.body.style.overflow = previousOverflow || '';
-    };
-  }, [showIntro]);
-
-  useEffect(() => onPublicThemeChange((mode) => setPublicThemeMode(mode)), []);
+  useEffect(() => onPublicThemeChange(setPublicThemeMode), []);
 
   useEffect(() => {
     if (isAuthenticated && (onboardingCompleted || isAdmin)) {
       navigate(ROUTES.userDashboard, { replace: true });
     }
-  }, [navigate, isAuthenticated, onboardingCompleted, isAdmin]);
+  }, [isAuthenticated, onboardingCompleted, isAdmin]);
 
-  const selectedTool = useMemo(() => TOOL_DEFINITIONS.find((item) => item.id === openToolId), [openToolId]);
+  // smoother SaaS-like animation (NOT random jitter)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setBars(prev =>
+        prev.map((v, i) => {
+          const wave = Math.sin(Date.now() / 800 + i) * 4;
+          const drift = Math.random() * 2 - 1;
+          const next = v + wave * 0.3 + drift;
+
+          return Math.max(25, Math.min(95, next));
+        })
+      );
+    }, 900);
+
+    return () => clearInterval(interval);
+  }, []);
 
   return (
-    <>
-      {showIntro && typeof document !== 'undefined' && createPortal(
-        <div className="landing-intro fixed inset-0 z-[1000] flex items-center justify-center px-4">
-          <div className="text-center flex flex-col items-center justify-center">
-            <p className="text-[11px] tracking-[0.32em] text-[#1e5b9a] font-semibold">WELCOME TO</p>
-            <h1 className="landing-brand mt-3">{introBrand.slice(0, brandCount)}</h1>
+    <div className="w-full min-h-[80vh] overflow-hidden relative flex items-center justify-center">
+
+      {/* 🔵 background glow */}
+     
+
+      <div className="w-full max-w-7xl px-5 md:px-10 grid grid-cols-1 lg:grid-cols-2 gap-10 items-center">
+
+        {/* LEFT */}
+        <div className="text-center lg:text-left space-y-6 text-white">
+
+          <p className="uppercase tracking-[0.3em] text-xs text-blue-200">
+            Unified ERP Platform
+          </p>
+
+          <h1 className="text-3xl sm:text-5xl md:text-6xl font-bold leading-tight">
+            Your Entire Business.
+            <br />
+            <span className="bg-gradient-to-r from-blue-400 to-sky-400 bg-clip-text text-transparent">
+              One Intelligent System
+            </span>
+          </h1>
+
+          <p className="text-sm md:text-lg text-blue-100 max-w-xl mx-auto lg:mx-0">
+            Billing, inventory, healthcare, staff, reports : everything connected in real time.
+          </p>
+
+          <div className="flex flex-wrap justify-center lg:justify-start gap-3">
+            <button
+              onClick={() => navigate(ROUTES.setup)}
+              className="px-6 py-3 rounded-full bg-gradient-to-r from-blue-600 to-sky-500 font-semibold shadow-xl hover:scale-105 transition"
+            >
+              <Sparkles size={16} className="inline mr-2" />
+              Start Free
+            </button>
+
+            <button
+              onClick={() => navigate(ROUTES.admin)}
+              className="px-6 py-3 rounded-full border border-white/20 bg-white/10 backdrop-blur"
+            >
+              Admin Login
+            </button>
           </div>
-        </div>,
-        document.body,
-      )}
+        </div>
 
-      <div className={`landing-shell max-w-7xl mx-auto px-0 sm:px-4 md:px-5 space-y-10 pb-20 overflow-x-hidden ${publicThemeMode === 'dark' ? 'home-dark' : ''}`}>
-        <div className="landing-water-layer pointer-events-none" ref={waveRefOne} />
-        <div className="landing-water-layer-two pointer-events-none" ref={waveRefTwo} />
-        <div className="landing-float-blob pointer-events-none" ref={floatBlobRef} />
+        {/* RIGHT - REALISTIC ANALYTICS CARD */}
+        <div className="flex justify-center relative">
 
-        <section className="relative overflow-hidden">
-          <div className="hero-content relative px-3 py-4 sm:px-8 sm:py-10 md:px-12 md:py-12 grid lg:grid-cols-[1.1fr_0.9fr] gap-5 sm:gap-7 items-center">
-          <div className="space-y-5 animate-rise">
-            <p className="home-kicker inline-flex items-center gap-2 text-xs uppercase tracking-[0.22em] text-[#3d608d]">Simple ERP Stack</p>
-            <h1 className="home-hero-title text-3xl sm:text-4xl md:text-6xl font-black leading-tight text-[#0f2d66]">
-              Run Your Entire Business
-              <br />
-              From One App
-            </h1>
-            <p className="home-hero-sub text-base md:text-xl font-semibold text-[#1e90ff]">Billing, inventory, reports...</p>
-            <div className="flex flex-wrap gap-2">
-              <button onClick={() => navigate(ROUTES.setup)} className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-[#1e90ff] text-white font-semibold shadow-[0_10px_30px_rgba(30,144,255,0.35)] hover:translate-y-[-1px] transition">
-                <Sparkles size={16} /> Start Free
-              </button>
-              <button onClick={() => navigate(ROUTES.admin)} className="inline-flex items-center gap-2 px-6 py-3 rounded-xl border border-[#bedcff] text-[#0f2d66] font-semibold bg-white/85">
-                Admin Login
-              </button>
+          <div className="w-[2600px] sm:w-[530px] md:w-[580px] h-[400px] md:h-[560px] relative rounded-2xl overflow-hidden border border-white/10 bg-white/5 backdrop-blur-xl shadow-2xl">
+
+            {/* GRID BACKGROUND */}
+            <div
+              className="absolute inset-0 opacity-20"
+              style={{
+                backgroundImage:
+                  'linear-gradient(to right, rgba(255,255,255,0.08) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.08) 1px, transparent 1px)',
+                backgroundSize: '22px 22px'
+              }}
+            />
+
+            {/* BASELINE */}
+            <div className="absolute bottom-0 left-0 right-0 h-[1px] bg-blue-400/40" />
+
+            {/* BARS */}
+            <div className="relative flex items-end justify-between h-full px-3 pb-3 gap-1">
+
+              {bars.map((h, i) => (
+                <div
+                  key={i}
+                  className="relative flex-1 rounded-t-md transition-all duration-700 ease-out"
+                  style={{
+                    height: `${h}%`,
+                    background: 'linear-gradient(to top, #1e90ff, #38bdf8)',
+                    boxShadow: '0 0 18px rgba(30,144,255,0.25)'
+                  }}
+                >
+                  {/* TOP GLOW DOT */}
+                  <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 bg-sky-300 rounded-full shadow-md" />
+                </div>
+              ))}
+
             </div>
-            <p className="home-muted text-xs md:text-sm text-[#385173] font-semibold">No credit card required</p>
+
+            {/* LABEL */}
+            <div className="absolute bottom-2 left-0 right-0 text-center text-[10px] md:text-xs text-blue-200 p-5">
+              Live Business Analytics
+            </div>
           </div>
 
-          <div className="home-why-wrap rounded-none border-0 bg-transparent p-0 sm:p-5 md:rounded-2xl md:border md:border-[#cde4ff] md:bg-white/95 md:p-5 animate-rise-delayed space-y-3">
-            <p className="home-kicker text-xs uppercase tracking-[0.2em] text-[#1e90ff] font-semibold">Why DX Tools</p>
-            {heroKeywords.map((line) => (
-              <div key={line} className="home-chip rounded-xl border border-[#d8e9ff] bg-[#f7fbff] px-3 py-2 text-sm md:text-base text-[#0f2d66] font-semibold leading-snug">
-                {line}
+          {/* FEATURES FLOATING (desktop only) */}
+          <div className="hidden md:block">
+            {FEATURES.slice(0, 6).map((f, i) => (
+              <div
+                key={f}
+                className="absolute text-[10px] px-2 py-1 rounded-full bg-white/10 backdrop-blur border border-white/20 text-blue-100"
+                style={{
+                  top: `${18 + Math.sin(i) * 50}%`,
+                  left: `${8 + i * 12}%`
+                }}
+              >
+                {f}
               </div>
             ))}
-            <div className="home-chip home-muted rounded-xl border border-[#d8e9ff] bg-white px-3 py-2 text-sm text-[#385173]">
-              Everything your day-to-day operations need in one clean workspace.
-            </div>
           </div>
-          </div>
-        </section>
 
-        <section className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h3 className="home-section-title text-2xl font-black text-[#0f2d66]">Available Tools</h3>
-          <span className="home-muted text-xs text-[#4e6c93]">Tap to preview module</span>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          {TOOL_DEFINITIONS.map((tool) => (
-            <button
-              key={tool.id}
-              onClick={() => setOpenToolId(tool.id)}
-              className="home-tool-card rounded-xl border border-[#cde4ff] bg-white p-4 text-left hover:border-[#1e90ff] hover:bg-[#f4f9ff] transition-all"
-            >
-              <p className="home-muted text-xs text-[#4e6c93]">{tool.category}</p>
-              <p className="home-tool-title font-bold mt-1 text-[#0f2d66]">{tool.label}</p>
-              <p className="home-muted text-xs text-[#4e6c93] mt-1">{tool.description}</p>
-            </button>
-          ))}
-        </div>
-        </section>
-
-        <section className="home-marketing-card rounded-3xl border border-[#cde4ff] bg-white/92 backdrop-blur-[2px] p-6 md:p-8 shadow-[0_16px_45px_rgba(30,144,255,0.12)]">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="max-w-3xl">
-            <p className="home-kicker text-xs uppercase tracking-[0.2em] text-[#1e90ff] font-semibold">Marketing Service</p>
-            <h3 className="home-section-title text-2xl md:text-3xl font-black text-[#0f2d66] mt-1">Open Marketing Tools</h3>
-            <p className="home-muted text-sm md:text-base text-[#385173] mt-2">
-              Use dedicated marketing tools to improve online visibility and grow your customer base.
-            </p>
-          </div>
-          <button
-            onClick={() => {
-              window.location.href = 'https://google.com';
-            }}
-            className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-[#1e90ff] text-white font-semibold shadow-[0_10px_25px_rgba(30,144,255,0.3)]"
-          >
-            <Megaphone size={16} /> Open Marketing Tools
-          </button>
-        </div>
-        </section>
-
-        {openToolId && selectedTool && (
-          <Modal
-            isOpen={Boolean(openToolId && selectedTool)}
-            onClose={() => setOpenToolId(null)}
-            title="Tool Preview"
-            maxWidth="34rem"
-            closeOnBackdrop
-            panelClassName="home-preview-modal"
-          >
-            <div className="space-y-3">
-              <div>
-                <p className="home-preview-category text-xs text-[#4e6c93]">{selectedTool.category}</p>
-                <h4 className="home-preview-title text-xl font-black text-[#0f2d66]">{selectedTool.label}</h4>
-              </div>
-              <p className="home-preview-description text-sm text-[#385173] mt-3">{selectedTool.description}</p>
-              <button onClick={() => navigate(ROUTES.setup)} className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[#1e90ff] text-white text-sm font-semibold">
-                Continue Setup <ArrowRight size={14} />
-              </button>
-            </div>
-          </Modal>
-        )}
       </div>
-    </>
+    </div>
   );
 };
 

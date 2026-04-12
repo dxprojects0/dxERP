@@ -164,7 +164,12 @@ const Profile: React.FC = () => {
       )}
 
       <section className="bg-surface border border-app rounded-2xl p-6">
-        <h1 className="text-3xl font-black">Profile</h1>
+        <div className="flex items-center justify-between gap-3">
+          <h1 className="text-3xl font-black">Profile</h1>
+          <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-app text-xs font-semibold bg-app/60">
+            Plan: {activePlanLabel}
+          </span>
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 text-sm">
           <div className="rounded-xl border border-app p-4">
             <p className="text-subtle text-xs">Name</p>

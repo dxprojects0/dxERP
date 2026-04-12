@@ -131,12 +131,16 @@ const POS: React.FC = () => {
 
   const handleCheckout = () => {
     if (cart.length === 0 || hasExpired) return;
+    if (!customerName.trim() || !customerPhone.trim()) {
+      emitToast({ variant: 'error', message: 'Please add customer name and phone before billing.' });
+      return;
+    }
     const invId = `INV-${Date.now().toString().slice(-6)}`;
     const invoice = {
       id: invId,
       date: new Date().toISOString(),
-      customerName: customerName || undefined,
-      customerPhone: customerPhone || undefined,
+      customerName: customerName.trim(),
+      customerPhone: customerPhone.trim(),
       items: cartItems.map((i) => ({ name: i.name, price: i.sellingPrice, quantity: i.qty })),
       total,
       paymentMode,
@@ -202,51 +206,92 @@ const POS: React.FC = () => {
 
   const downloadPdf = () => {
     if (!lastInvoice) return;
+    const businessName = shopName || 'Your Business';
+    const ownerNote = '';
     const itemRows = (lastInvoice.items || [])
       .map(
         (item: any) => `
           <tr>
-            <td style="padding:8px;border-bottom:1px solid #e2e8f0;">${item.name}</td>
-            <td style="padding:8px;border-bottom:1px solid #e2e8f0;text-align:right;">${item.quantity}</td>
-            <td style="padding:8px;border-bottom:1px solid #e2e8f0;text-align:right;">Rs ${item.price}</td>
-            <td style="padding:8px;border-bottom:1px solid #e2e8f0;text-align:right;">Rs ${item.price * item.quantity}</td>
+            <td style="padding:10px;border:1px solid #d7e3f0;">${item.name}</td>
+            <td style="padding:10px;border:1px solid #d7e3f0;text-align:right;">${item.quantity}</td>
+            <td style="padding:10px;border:1px solid #d7e3f0;text-align:right;">Rs ${item.price}</td>
+            <td style="padding:10px;border:1px solid #d7e3f0;text-align:right;">Rs ${item.price * item.quantity}</td>
           </tr>
         `,
       )
       .join('');
     const printed = printHtmlDocument(
-      `Receipt ${lastInvoice.id}`,
+      `Invoice ${lastInvoice.id}`,
       `
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;">
-          <div>
-            <h2 style="margin:0;color:#1e90ff;">${shopName || 'DhandaX Tools'}</h2>
-            <p style="margin:6px 0 0 0;color:#64748b;">Invoice ${lastInvoice.id}</p>
+        <style>
+          body { font-family: 'Segoe UI', Arial, sans-serif; color: #0f172a; margin: 0; }
+          .wrapper { max-width: 720px; margin: 0 auto; padding: 32px 32px 48px; }
+          .hero { display:flex; align-items:center; gap:12px; margin-bottom:12px; }
+          .hero .brand { display:flex; align-items:center; gap:12px; }
+          .hero img { height:46px; width:46px; object-fit:contain; border-radius:8px; }
+          .hero .title { font-weight:700; font-size:14px; margin:0; color:#0f172a; }
+          h1 { text-align:center; margin:32px 0 16px; font-size:24px; }
+          .section { margin-top:18px; }
+          .label { font-weight:600; margin:0 0 4px; font-size:13px; }
+          .table { width:100%; border-collapse:collapse; margin-top:12px; font-size:13px; }
+          .table th { background:#f1f5f9; text-align:left; padding:10px; border:1px solid #d7e3f0; }
+          .table td { padding:10px; border:1px solid #d7e3f0; }
+          .right { text-align:right; }
+          .total { font-weight:800; font-size:16px; text-align:right; margin-top:12px; }
+          .pill { border:1px solid #bae6fd; background:#e0f2fe; border-radius:10px; padding:12px 14px; font-size:13px; line-height:1.5; color:#0f172a; }
+          .note { margin-top:20px; font-size:13px; line-height:1.6; color:#475569; }
+          .footer { margin-top:28px; font-size:13px; font-weight:700; color:#0f172a; }
+        </style>
+        <div class="wrapper">
+          <div class="hero">
+            <div class="brand">
+              <img src="/favicon.png" alt="Logo" />
+              <div>
+                <p class="title">DhandaX ERP</p>
+              </div>
+            </div>
           </div>
-          <div style="text-align:right;font-size:13px;color:#334155;">
-            <div><strong>Date:</strong> ${new Date(lastInvoice.date).toLocaleString()}</div>
-            <div><strong>Customer:</strong> ${lastInvoice.customerName || '-'}</div>
-            <div><strong>Phone:</strong> ${lastInvoice.customerPhone || '-'}</div>
+
+          <h1>Invoice / Bill</h1>
+
+          <div class="pill">
+            <strong>Billed By:</strong> ${businessName}<br/>
+            <span style="color:#475569;">Invoice created on ${new Date(lastInvoice.date).toLocaleString()}</span>
           </div>
-        </div>
-        <table style="width:100%;margin-top:16px;border-collapse:collapse;font-size:13px;">
-          <thead>
-            <tr style="background:#f8fafc;">
-              <th style="text-align:left;padding:8px;border-bottom:1px solid #cbd5e1;">Item</th>
-              <th style="text-align:right;padding:8px;border-bottom:1px solid #cbd5e1;">Qty</th>
-              <th style="text-align:right;padding:8px;border-bottom:1px solid #cbd5e1;">Price</th>
-              <th style="text-align:right;padding:8px;border-bottom:1px solid #cbd5e1;">Amount</th>
-            </tr>
-          </thead>
-          <tbody>${itemRows}</tbody>
-        </table>
-        <div style="margin-top:14px;display:grid;gap:6px;justify-content:end;text-align:right;font-size:13px;">
-          <div><strong>Payment:</strong> ${lastInvoice.paymentMode}</div>
-          <div><strong>Status:</strong> ${lastInvoice.paid ? 'Paid' : 'Udhaar'}</div>
-          <div style="font-size:18px;"><strong>Total: Rs ${lastInvoice.total}</strong></div>
+
+          <div class="section">
+            <p class="label">Bill To:</p>
+            <p style="font-weight:700;margin:0 0 2px;">${lastInvoice.customerName}</p>
+            <p style="margin:0 0 2px;">${lastInvoice.customerPhone}</p>
+            <p style="margin:0;">${dueDate ? `Due Date: ${dueDate}` : ''}</p>
+          </div>
+
+          <div class="section" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:6px;">
+            <div><span class="label">Invoice #</span><div>${lastInvoice.id}</div></div>
+            <div><span class="label">Date</span><div>${new Date(lastInvoice.date).toLocaleDateString()}</div></div>
+            <div><span class="label">Status</span><div>${lastInvoice.paid ? 'Paid' : 'Udhaar'}</div></div>
+            <div><span class="label">Payment Mode</span><div>${lastInvoice.paymentMode}</div></div>
+          </div>
+
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Description</th>
+                <th class="right">Quantity</th>
+                <th class="right">Unit Price</th>
+                <th class="right">Total</th>
+              </tr>
+            </thead>
+            <tbody>${itemRows}</tbody>
+          </table>
+
+          <div class="total">Total Amount Due: ₹${Math.round(lastInvoice.total)}</div>
+
+          <div class="footer">Thank you for choosing ${businessName}.</div>
         </div>
       `,
-      700,
-      900,
+      720,
+      1020,
     );
     if (!printed) {
       emitToast({ variant: 'error', message: 'Popup blocked. Allow popups and retry.' });

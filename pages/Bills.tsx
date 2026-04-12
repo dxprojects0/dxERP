@@ -3,6 +3,7 @@ import { Search } from 'lucide-react';
 import { useSelector } from 'react-redux';
 import { RootState } from '../store/store';
 import Modal from '../components/Modal';
+import { printHtmlDocument } from '../utils/print';
 
 type TxKind = 'invoice' | 'expense' | 'income' | 'ledgerDue';
 
@@ -25,6 +26,7 @@ const Bills: React.FC = () => {
   const invoices = useSelector((state: RootState) => state.pos.invoices || []);
   const finance = useSelector((state: RootState) => state.finance.transactions || []);
   const ledger = useSelector((state: RootState) => state.business.ledger || []);
+  const shopName = useSelector((state: RootState) => state.config.shopName || 'Your Business');
 
   const [query, setQuery] = useState('');
   const [kindFilter, setKindFilter] = useState<'all' | TxKind>('all');
@@ -154,6 +156,28 @@ const Bills: React.FC = () => {
               </p>
             </div>
 
+            <div className="rounded-xl border border-app p-3 space-y-2">
+              <p className="font-semibold text-sm">Customer</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm text-subtle">
+                <div>
+                  <p className="text-[11px] uppercase tracking-wide">Name</p>
+                  <p className="font-medium text-foreground">{active.meta.customerName || '—'}</p>
+                </div>
+                <div>
+                  <p className="text-[11px] uppercase tracking-wide">Contact</p>
+                  <p className="font-medium text-foreground">{active.meta.customerPhone || active.meta.customerEmail || '—'}</p>
+                </div>
+                <div>
+                  <p className="text-[11px] uppercase tracking-wide">Address</p>
+                  <p className="font-medium text-foreground">{active.meta.customerAddress || '—'}</p>
+                </div>
+                <div>
+                  <p className="text-[11px] uppercase tracking-wide">Notes</p>
+                  <p className="font-medium text-foreground">{active.meta.notes || active.meta.description || '—'}</p>
+                </div>
+              </div>
+            </div>
+
             {'items' in active.meta && Array.isArray(active.meta.items) && (
               <div className="rounded-xl border border-app p-3">
                 <p className="font-semibold text-sm mb-2">Items</p>
@@ -168,9 +192,147 @@ const Bills: React.FC = () => {
               </div>
             )}
 
-            <pre className="text-xs bg-app/60 border border-app rounded-xl p-3 overflow-auto whitespace-pre-wrap break-words">
-              {JSON.stringify(active.meta, null, 2)}
-            </pre>
+            <div className="rounded-xl border border-app p-3 space-y-2">
+              <p className="font-semibold text-sm">Summary</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm text-subtle">
+                <div>
+                  <p className="text-[11px] uppercase tracking-wide">Reference</p>
+                  <p className="font-medium text-foreground">{active.meta.id || active.id}</p>
+                </div>
+                <div>
+                  <p className="text-[11px] uppercase tracking-wide">Category</p>
+                  <p className="font-medium text-foreground">{active.meta.category || active.meta.type || active.kind}</p>
+                </div>
+                <div>
+                  <p className="text-[11px] uppercase tracking-wide">Payment Status</p>
+                  <p className="font-medium text-foreground">{active.meta.status || active.meta.paymentStatus || '—'}</p>
+                </div>
+                <div>
+                  <p className="text-[11px] uppercase tracking-wide">Recorded By</p>
+                  <p className="font-medium text-foreground">{active.meta.user || active.meta.createdBy || '—'}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              {active.kind === 'invoice' && (
+                <button
+                  className="px-4 py-2 rounded-lg bg-primary-app text-white font-semibold"
+                  onClick={() => {
+                    const meta = active.meta || {};
+                    const items = Array.isArray(meta.items) ? meta.items : [];
+                    const itemRows = items
+                      .map(
+                        (item: any) => `
+                          <tr>
+                            <td style="padding:10px;border:1px solid #d7e3f0;">${item.name}</td>
+                            <td style="padding:10px;border:1px solid #d7e3f0;text-align:right;">${item.quantity}</td>
+                            <td style="padding:10px;border:1px solid #d7e3f0;text-align:right;">₹ ${item.price}</td>
+                            <td style="padding:10px;border:1px solid #d7e3f0;text-align:right;">₹ ${item.price * item.quantity}</td>
+                          </tr>
+                        `,
+                      )
+                      .join('');
+
+                    const billHtml = `
+                      <style>
+                        body { font-family: 'Segoe UI', Arial, sans-serif; color: #0f172a; margin: 0; }
+                        .wrapper { max-width: 720px; margin: 0 auto; padding: 32px 32px 48px; }
+                        .hero { display:flex; align-items:center; gap:12px; margin-bottom:12px; }
+                        .hero img { height:46px; width:46px; object-fit:contain; border-radius:8px; }
+                        .hero .title { font-weight:700; font-size:16px; margin:0; color:#0f172a; }
+                        h1 { text-align:center; margin:24px 0 12px; font-size:22px; }
+                        .label { font-weight:600; margin:0 0 4px; font-size:13px; }
+                        .section { margin-top:16px; }
+                        .table { width:100%; border-collapse:collapse; margin-top:12px; font-size:13px; }
+                        .table th { background:#f1f5f9; text-align:left; padding:10px; border:1px solid #d7e3f0; }
+                        .table td { padding:10px; border:1px solid #d7e3f0; }
+                        .right { text-align:right; }
+                        .total { font-weight:800; font-size:16px; text-align:right; margin-top:12px; }
+                      </style>
+                      <div class="wrapper">
+                        <div class="hero">
+                          <img src="/favicon.png" alt="Logo" />
+                          <div>
+                            <p class="title">${shopName}</p>
+                            <p style="margin:0;font-size:12px;color:#334155;">Generated by DhandaX ERP Software</p>
+                          </div>
+                        </div>
+
+                        <h1>Invoice / Bill</h1>
+
+                        <div class="section" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:6px;">
+                          <div><span class="label">Reference</span><div>${meta.id || active.id}</div></div>
+                          <div><span class="label">Date</span><div>${new Date(active.date).toLocaleDateString()}</div></div>
+                          <div><span class="label">Type</span><div>${active.kind}</div></div>
+                          <div><span class="label">Status</span><div>${meta.paid ? 'Paid' : meta.status || meta.paymentStatus || 'Pending'}</div></div>
+                          <div><span class="label">Payment Mode</span><div>${meta.paymentMode || meta.paymentMethod || '—'}</div></div>
+                        </div>
+
+                        <div class="section">
+                          <p class="label">Bill To:</p>
+                          <p style="font-weight:700;margin:0 0 2px;">${meta.customerName || '—'}</p>
+                          <p style="margin:0 0 2px;">${meta.customerPhone || meta.customerEmail || '—'}</p>
+                          <p style="margin:0;">${meta.customerAddress || ''}</p>
+                        </div>
+
+                        <table class="table">
+                          <thead>
+                            <tr>
+                              <th>Description</th>
+                              <th class="right">Quantity</th>
+                              <th class="right">Unit Price</th>
+                              <th class="right">Total</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            ${itemRows || `
+                              <tr>
+                                <td style="padding:10px;border:1px solid #d7e3f0;" colspan="4">No line items recorded.</td>
+                              </tr>`}
+                          </tbody>
+                        </table>
+
+                        <div class="total">Total Amount: ₹${Math.abs(Math.round(active.amount || meta.total || 0))}</div>
+                      </div>
+                    `;
+
+                    const printed = printHtmlDocument(`Invoice-${active.id}`, billHtml, 720, 1020);
+                    if (!printed) {
+                      alert('Popup blocked. Allow popups to download the PDF.');
+                    }
+                  }}
+                >
+                  Download
+                </button>
+              )}
+              <button
+                className="px-4 py-2 rounded-lg border border-app text-foreground font-semibold"
+                onClick={async () => {
+                  const meta = active.meta || {};
+                  const summary = [
+                    `Transaction: ${active.label}`,
+                    `Date: ${active.date}`,
+                    `Type: ${active.kind}`,
+                    `Amount: ${active.amount >= 0 ? '+' : '-'}₹${Math.abs(Math.round(active.amount))}`,
+                    `Customer: ${meta.customerName || 'N/A'}`,
+                    `Contact: ${meta.customerPhone || meta.customerEmail || 'N/A'}`,
+                    `Address: ${meta.customerAddress || 'N/A'}`,
+                    `Category: ${meta.category || meta.type || active.kind}`,
+                    `Status: ${meta.status || meta.paymentStatus || (active.amount >= 0 ? 'Paid/Inflow' : 'Outflow')}`,
+                    `Notes: ${meta.notes || meta.description || 'N/A'}`,
+                  ].join('\n');
+                  if (navigator.share) {
+                    await navigator.share({ title: active.label, text: summary });
+                  } else {
+                    await navigator.clipboard.writeText(summary);
+                    alert('Details copied to clipboard.');
+                  }
+                }}
+              >
+                Share
+              </button>
+            </div>
           </div>
         </Modal>
       )}

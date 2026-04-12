@@ -85,6 +85,16 @@ const Dashboard: React.FC = () => {
   const yesterdaySales = invoices.filter((inv) => inv.date.startsWith(yesterday)).reduce((acc, inv) => acc + inv.total, 0);
   const delta = todaySales - yesterdaySales;
   const deltaPercent = yesterdaySales > 0 ? Math.round((delta / yesterdaySales) * 100) : 0;
+  const hourlySales = React.useMemo(() => {
+    const buckets = Array.from({ length: 24 }, () => 0);
+    invoices.forEach((inv) => {
+      if (!inv.date) return;
+      const hour = new Date(inv.date).getHours();
+      if (!Number.isNaN(hour) && hour >= 0 && hour < 24) buckets[hour] += inv.total || 0;
+    });
+    const max = Math.max(...buckets, 1);
+    return { buckets, max };
+  }, [invoices]);
 
   const useCountUp = (value: number, from = 0, duration = 700) => {
     const [display, setDisplay] = React.useState(from);
@@ -105,6 +115,24 @@ const Dashboard: React.FC = () => {
   const animatedToday = useCountUp(todaySales, 999, 900);
   const animatedYesterday = useCountUp(yesterdaySales, 999, 900);
   const animatedTools = useCountUp(finalTools.length, 0, 900);
+  const [activityView, setActivityView] = React.useState<'24h' | '7d'>('24h');
+
+  const last7Days = React.useMemo(() => {
+    const days: { label: string; total: number }[] = [];
+    for (let i = 6; i >= 0; i -= 1) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const key = d.toISOString().slice(0, 10);
+      const total = invoices
+        .filter((inv) => inv.date?.startsWith(key))
+        .reduce((sum, inv) => sum + (inv.total || 0), 0);
+      days.push({ label: d.toLocaleDateString(undefined, { weekday: 'short' }), total });
+    }
+    const max = Math.max(...days.map((d) => d.total), 1);
+    const sum = days.reduce((s, d) => s + d.total, 0);
+    const best = days.reduce((top, d) => (d.total > top.total ? d : top), { label: '', total: -Infinity });
+    return { days, max, sum, best };
+  }, [invoices]);
 
   const syncNow = async () => {
     if (!authUid || !isAdmin) return;
@@ -186,23 +214,101 @@ const Dashboard: React.FC = () => {
         </div>
       </section>
 
-      <section className="rounded-2xl border border-app bg-surface p-5">
-        <div className="flex flex-wrap items-center gap-2 justify-between mb-3">
-          <h2 className="font-black">Recent Transactions</h2>
-        </div>
-        <div className="space-y-2">
-          {invoices.slice(-6).reverse().map((invoice) => (
-            <div key={invoice.id} className="flex items-center justify-between rounded-xl border border-app px-3 py-2">
-              <div className="inline-flex items-center gap-2">
-                <CircleDollarSign size={15} />
-                <span className="text-sm">Invoice #{invoice.id.slice(-4)}</span>
+      <section className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+        <div className="rounded-2xl border border-app bg-surface p-5">
+          <div className="flex items-center justify-between gap-2 mb-3">
+            <h2 className="font-black">Sales Activity</h2>
+            <div className="inline-flex rounded-xl border border-app overflow-hidden text-xs font-semibold">
+              <button
+                className={`px-3 py-1 ${activityView === '24h' ? 'bg-primary-app text-white' : 'text-subtle'}`}
+                onClick={() => setActivityView('24h')}
+              >
+                24h
+              </button>
+              <button
+                className={`px-3 py-1 ${activityView === '7d' ? 'bg-primary-app text-white' : 'text-subtle'}`}
+                onClick={() => setActivityView('7d')}
+              >
+                7d
+              </button>
+            </div>
+          </div>
+
+          {activityView === '24h' && (
+            <div className="flex flex-col gap-4 overflow-x-auto pb-2">
+              <div className="heatmap-grid heatmap-24">
+                {hourlySales.buckets.map((value, hour) => {
+                  const level = value === 0 ? 0 : Math.min(4, Math.ceil((value / hourlySales.max) * 4));
+                  return (
+                    <div
+                      key={hour}
+                      className="heatmap-cell"
+                      data-level={level}
+                      title={`${hour}:00 • ₹ ${Math.round(value)}`}
+                    />
+                  );
+                })}
               </div>
-              <div className={`text-sm font-bold ${invoice.total >= 0 ? 'text-[color:var(--success)]' : 'text-[color:var(--danger)]'}`}>
-                {invoice.total >= 0 ? '+' : '-'} ₹ {Math.abs(invoice.total)}
+              <div className="heatmap-legend">
+                <span>Less</span>
+                {[0,1,2,3,4].map((l) => (
+                  <span key={l} className="heatmap-cell" data-level={l} style={{ width: 14, height: 14 }} />
+                ))}
+                <span>More</span>
               </div>
             </div>
-          ))}
-          {invoices.length === 0 && <div className="text-sm text-subtle py-4 text-center">No transactions yet.</div>}
+          )}
+
+          {activityView === '7d' && (
+            <div className="flex flex-col gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                <div className="rounded-xl border border-app p-3 bg-app/30">
+                  <p className="text-xs text-subtle">Total (7d)</p>
+                  <p className="text-xl font-black">₹ {Math.round(last7Days.sum)}</p>
+                </div>
+                <div className="rounded-xl border border-app p-3 bg-app/30">
+                  <p className="text-xs text-subtle">Best Day</p>
+                  <p className="text-xl font-black">{last7Days.best.label || '-'}</p>
+                </div>
+              </div>
+              <div className="space-y-3">
+                {last7Days.days.map((day) => {
+                  const pct = Math.round((day.total / last7Days.max) * 100) || 0;
+                  return (
+                    <div key={day.label}>
+                      <div className="flex justify-between text-xs text-subtle mb-1">
+                        <span>{day.label}</span>
+                        <span>₹ {Math.round(day.total)}</span>
+                      </div>
+                      <div className="h-3 rounded-full bg-app/50 overflow-hidden">
+                        <div className="h-full bg-[color:var(--primary)]" style={{ width: `${pct}%` }} />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="rounded-2xl border border-app bg-surface p-5">
+          <div className="flex flex-wrap items-center gap-2 justify-between mb-3">
+            <h2 className="font-black">Recent Transactions</h2>
+          </div>
+          <div className="space-y-2">
+            {invoices.slice(-6).reverse().map((invoice) => (
+              <div key={invoice.id} className="flex items-center justify-between rounded-xl border border-app px-3 py-2">
+                <div className="inline-flex items-center gap-2">
+                  <CircleDollarSign size={15} />
+                  <span className="text-sm">Invoice #{invoice.id.slice(-4)}</span>
+                </div>
+                <div className={`text-sm font-bold ${invoice.total >= 0 ? 'text-[color:var(--success)]' : 'text-[color:var(--danger)]'}`}>
+                  {invoice.total >= 0 ? '+' : '-'} ₹ {Math.abs(invoice.total)}
+                </div>
+              </div>
+            ))}
+            {invoices.length === 0 && <div className="text-sm text-subtle py-4 text-center">No transactions yet.</div>}
+          </div>
         </div>
       </section>
 

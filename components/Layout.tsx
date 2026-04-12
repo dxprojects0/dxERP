@@ -3,12 +3,13 @@ import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { BarChart3, Clock3, Home, ListChecks, LogOut, Menu, Moon, Plus, ReceiptText, Sun, UserCircle2, X } from 'lucide-react';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '../store/store';
-import { markLoginPromptShownToday, signOutUser } from '../features/configSlice';
+import { markLoginPromptShownToday, signOutUser, setOwnerName, setPhoneNumber, setShopName } from '../features/configSlice';
 import { getPaletteByName } from '../utils/themes';
-import { signOutFirebase, trackPageView } from '../utils/firebase';
+import { saveUserProfile, signOutFirebase, trackPageView } from '../utils/firebase';
 import { PRESET_TOOLS, TOOL_DEFINITIONS } from '../utils/catalog';
 import { buildUserToolRoute, ROUTES } from '../utils/routes';
 import ToastHost from './ToastHost';
+import Modal from './Modal';
 import { emitToast } from '../utils/toast';
 import { ToolFeature } from '../types';
 import { isPaidPlan } from '../utils/plans';
@@ -23,6 +24,11 @@ const Layout: React.FC = () => {
   const [showMenu, setShowMenu] = useState(false);
   const [showToolMenu, setShowToolMenu] = useState(false);
   const [showUpgradePrompt, setShowUpgradePrompt] = useState(false);
+  const [showProfilePrompt, setShowProfilePrompt] = useState(false);
+  const [promptShop, setPromptShop] = useState('');
+  const [promptOwner, setPromptOwner] = useState('');
+  const [promptPhone, setPromptPhone] = useState('');
+  const [savingProfile, setSavingProfile] = useState(false);
   const [publicThemeMode, setPublicThemeMode] = useState<'light' | 'dark'>(() => getPublicTheme());
   const location = useLocation();
   const [pageAnim, setPageAnim] = useState(false);
@@ -32,6 +38,8 @@ const Layout: React.FC = () => {
     onboardingCompleted,
     isAdmin,
     shopName,
+    ownerName,
+    phoneNumber,
     themeMode,
     themePalette,
     selectedProfessionId,
@@ -118,6 +126,48 @@ const Layout: React.FC = () => {
     if (needsPrompt) setShowUpgradePrompt(true);
   }, [isAppReady, isAdmin, plan, firstUseAt, lastLoginPromptDate]);
 
+  useEffect(() => {
+    if (!isAppReady || isAdmin) return;
+    const missing = !shopName || !ownerName || !phoneNumber;
+    if (missing) {
+      setPromptShop(shopName || '');
+      setPromptOwner(ownerName || '');
+      setPromptPhone(phoneNumber || '');
+      setShowProfilePrompt(true);
+    }
+  }, [isAppReady, isAdmin, shopName, ownerName, phoneNumber]);
+
+  const saveProfilePrompt = async () => {
+    if (!appState.config.authUid) return;
+    if (!promptOwner.trim() || !promptShop.trim()) {
+      emitToast({ variant: 'error', message: 'Please add owner and business name.' });
+      return;
+    }
+    setSavingProfile(true);
+    try {
+      await saveUserProfile(appState.config.authUid, {
+        email: appState.config.authEmail,
+        displayName: appState.config.authDisplayName,
+        shopName: promptShop.trim(),
+        ownerName: promptOwner.trim(),
+        phoneNumber: promptPhone.trim(),
+        selectedProfessionId: selectedProfessionId || 'general',
+        plan,
+        role: appState.config.isAdmin ? 'admin' : 'user',
+      });
+      dispatch(setShopName(promptShop.trim()));
+      dispatch(setOwnerName(promptOwner.trim()));
+      dispatch(setPhoneNumber(promptPhone.trim()));
+      setShowProfilePrompt(false);
+      emitToast({ variant: 'success', message: 'Profile saved.' });
+    } catch (err: any) {
+      const msg = err?.message || 'Could not save profile. Check your connection.';
+      emitToast({ variant: 'error', message: msg });
+    } finally {
+      setSavingProfile(false);
+    }
+  };
+
   const closeUpgradePrompt = () => {
     dispatch(markLoginPromptShownToday(new Date().toISOString()));
     setShowUpgradePrompt(false);
@@ -134,9 +184,23 @@ const Layout: React.FC = () => {
             onClick={() => navigate(ROUTES.userDashboard)}
             className="h-20 border-b border-app text-left px-6"
           >
-            <p className="text-xs uppercase tracking-[0.2em] text-subtle">Dashboard</p>
-            <h1 className="text-2xl font-black mt-1 dhandax-tools-brand">DhandaX Tools</h1>
-          </button>
+            <p className="text-xs uppercase tracking-[0.2em] text-subtle py-1">
+  Dashboard
+</p>
+
+<div className="flex items-center gap-2">
+  <img
+    src="/favicon.png"
+    alt="DhandaX"
+    className="h-6 w-6 rounded-md"
+  />
+
+  <h1 className="text-2xl font-black text-subtle">
+    DhandaX
+  </h1>
+</div>
+    
+     </button>
           <nav className="p-4 space-y-2">
             <NavLink to={ROUTES.userDashboard} className={({ isActive }) => `flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold ${isActive ? 'bg-primary-app text-white' : 'hover:bg-black/5'}`}>
               <Home size={17} /> Home
@@ -162,7 +226,10 @@ const Layout: React.FC = () => {
       )}
 
       <div className={isAppReady ? 'md:ml-64 min-h-screen flex flex-col' : 'min-h-screen flex flex-col'}>
-        <header className={`h-16 bg-surface border-b border-app px-4 md:px-6 items-center justify-between sticky top-0 z-30 ${showTopHeader ? 'flex' : 'hidden'} ${isAppReady ? 'md:hidden' : ''}`}>
+        <header
+          className={`h-14 px-4 md:px-6 items-center justify-between sticky top-0 z-30 ${showTopHeader ? 'flex' : 'hidden'} ${(isPublicNavRoute && !isAppReady) ? '' : 'bg-surface border-b border-app'}`}
+          style={(isPublicNavRoute && !isAppReady) ? { background: 'transparent', border: 'none', boxShadow: 'none', color: '#e5edff' } : {}}
+        >
           <div className="flex items-center gap-3">
             {isAppReady && (
               <button onClick={() => setShowMenu(true)} className="md:hidden p-2 rounded-lg border border-app">
@@ -170,26 +237,13 @@ const Layout: React.FC = () => {
               </button>
             )}
             {isPublicNavRoute && !isAppReady ? (
-              <h2 className="text-2xl font-black dhandax-tools-brand">DhandaX</h2>
-            ) : (
-              <div className="md:hidden">
-              <p className="text-xs uppercase tracking-[0.2em] text-subtle">{isAppReady ? 'Dashboard' : 'Welcome'}</p>
-              <h2 className="text-sm md:text-base font-bold dhandax-tools-brand-mobile">DhandaX Tools</h2>
-              {isAppReady && shopName && <p className="text-xs md:text-sm font-semibold text-subtle truncate max-w-[160px] md:max-w-none">{shopName}</p>}
+              <div className="flex items-center gap-2">
+                <img src="/favicon.png" alt="DhandaX" className="h-7 w-7 rounded-lg shadow-sm" />
+                <h2 className="text-xl font-black text-white md:text-slate-100">DhandaX</h2>
               </div>
-            )}
+            ) : null}
           </div>
-          {isAppReady && (
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => navigate(ROUTES.userTasks)}
-                title="Tasks"
-                className="p-2 rounded-lg border border-app hover:bg-black/5"
-              >
-                <ListChecks size={16} />
-              </button>
-            </div>
-          )}
+          {isAppReady && <div />}
           {!isAppReady && isPublicNavRoute && (
             <button
               onClick={() => {
@@ -363,6 +417,55 @@ const Layout: React.FC = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {showProfilePrompt && isAppReady && (
+        <Modal
+          isOpen={showProfilePrompt}
+          onClose={() => {}}
+          title="Complete your profile"
+          maxWidth="26rem"
+          closeOnBackdrop={false}
+        >
+          <div className="space-y-3">
+            <p className="text-sm text-subtle">Add basic details so we can personalize tools and invoices.</p>
+            <input
+              value={promptOwner}
+              onChange={(e) => setPromptOwner(e.target.value)}
+              placeholder="Owner name"
+              className="w-full border border-app rounded-lg px-3 py-2 bg-transparent"
+            />
+            <input
+              value={promptShop}
+              onChange={(e) => setPromptShop(e.target.value)}
+              placeholder="Business name"
+              className="w-full border border-app rounded-lg px-3 py-2 bg-transparent"
+            />
+            <input
+              value={promptPhone}
+              maxLength={10}
+              inputMode="numeric"
+              onChange={(e) => setPromptPhone(e.target.value.replace(/\\D/g, '').slice(0, 10))}
+              placeholder="Phone number"
+              className="w-full border border-app rounded-lg px-3 py-2 bg-transparent"
+            />
+            <div className="grid grid-cols-2 gap-2 pt-2">
+              <button
+                onClick={saveProfilePrompt}
+                disabled={savingProfile || !(promptOwner.trim() && promptShop.trim())}
+                className="px-3 py-2 rounded-lg bg-primary-app text-white font-semibold disabled:opacity-60"
+              >
+                {savingProfile ? 'Saving...' : 'Save & Continue'}
+              </button>
+              <button
+                onClick={() => setShowProfilePrompt(false)}
+                className="px-3 py-2 rounded-lg border border-app font-semibold"
+              >
+                Later
+              </button>
+            </div>
+          </div>
+        </Modal>
       )}
     </div>
   );

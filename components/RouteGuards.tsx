@@ -4,7 +4,6 @@ import { useSelector } from 'react-redux';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { RootState } from '../store/store';
 import { ROUTES } from '../utils/routes';
-import DhandaXLoader from './DhandaXLoader';
 
 export const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const navigate = useNavigate();
@@ -14,7 +13,7 @@ export const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ childr
   } = useSelector((state: RootState) => state.config);
 
   if (!authResolved) {
-    return <DhandaXLoader />;
+    return null;
   }
 
   if (!isAuthenticated) {
@@ -38,7 +37,7 @@ export const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ childr
 export const AdminRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated, isAdmin, authResolved } = useSelector((state: RootState) => state.config);
 
-  if (!authResolved) return <DhandaXLoader />;
+  if (!authResolved) return null;
   if (!isAuthenticated) return <Navigate to={ROUTES.admin} replace />;
   if (!isAdmin) return <Navigate to={ROUTES.home} replace />;
   return <>{children}</>;
