@@ -98,7 +98,7 @@ const Layout: React.FC = () => {
       root.style.setProperty('--success', '#16a34a');
       root.style.setProperty('--warning', '#f59e0b');
       root.style.setProperty('--danger', '#dc2626');
-      root.style.setProperty('color-scheme', isDark ? 'dark' : 'light');
+      root.style.setProperty('color-scheme', isDark ? 'dark' : 'dark');
       return;
     }
     const theme = themeMode === 'dark' ? palette.darkTheme : palette.lightTheme;
@@ -111,7 +111,7 @@ const Layout: React.FC = () => {
     root.style.setProperty('--success', theme.success);
     root.style.setProperty('--warning', theme.warning);
     root.style.setProperty('--danger', theme.danger);
-    root.style.setProperty('color-scheme', themeMode === 'dark' ? 'dark' : 'light');
+    root.style.setProperty('color-scheme', themeMode === 'dark' ? 'dark' : 'dark');
   }, [palette, themeMode, isPublicThemeRoute, publicThemeMode]);
 
   useEffect(() => {
@@ -244,10 +244,10 @@ const Layout: React.FC = () => {
             ) : null}
           </div>
           {isAppReady && <div />}
-          {!isAppReady && isPublicNavRoute && (
+          {/* {!isAppReady && isPublicNavRoute && (
             <button
               onClick={() => {
-                const next = publicThemeMode === 'dark' ? 'light' : 'dark';
+                const next = publicThemeMode === 'dark' ? 'dark' : 'dark';
                 setPublicThemeMode(next);
                 setPublicTheme(next);
               }}
@@ -255,9 +255,9 @@ const Layout: React.FC = () => {
               title="Toggle Light/Dark"
             >
               {publicThemeMode === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
-              {publicThemeMode === 'dark' ? 'Light' : 'Dark'}
+              {publicThemeMode === 'dark' ? 'dark' : 'Dark'}
             </button>
-          )}
+          )} */}
         </header>
 
         <main className={`flex-1 p-4 md:p-8 custom-scrollbar overflow-y-auto overflow-x-hidden ${isAppReady ? 'pb-24 md:pb-8' : ''}`}>
