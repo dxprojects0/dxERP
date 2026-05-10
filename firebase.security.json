@@ -30,8 +30,10 @@
     "requiredFields": [
       "uid",
       "email",
+      "name",
       "role",
       "plan",
+      "businessName",
       "shopName",
       "ownerName",
       "selectedProfessionId",
@@ -39,5 +41,37 @@
       "onboardingCompleted",
       "updatedAt"
     ]
+  },
+  "summarySchema": {
+    "document": "usersSummary/{uid}",
+    "requiredFields": [
+      "uid",
+      "email",
+      "ownerName",
+      "shopName",
+      "phoneNumber",
+      "category",
+      "plan",
+      "displayLabel",
+      "businessLabel",
+      "updatedAt"
+    ],
+    "notes": "Readable admin-facing user directory with owner/business labels plus email."
+  },
+  "paidInterestSchema": {
+    "document": "PaidInterests/{email_plan}",
+    "requiredFields": [
+      "requestId",
+      "uid",
+      "email",
+      "ownerName",
+      "businessName",
+      "phoneNumber",
+      "requestedPlan",
+      "displayLabel",
+      "businessLabel",
+      "createdAt"
+    ],
+    "notes": "Paid plan requests use email-based document ids and readable labels for easier admin scanning."
   }
 }

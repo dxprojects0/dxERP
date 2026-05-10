@@ -185,6 +185,11 @@ service cloud.firestore {
       allow read, write: if isPrivilegedAdmin();
     }
 
+    match /usersSummary/{userId} {
+      allow read, write: if isOwner(userId) || isPrivilegedAdmin();
+      allow delete: if false;
+    }
+
     match /adminManagement/{docId} {
       allow read, write: if isPrivilegedAdmin();
     }
